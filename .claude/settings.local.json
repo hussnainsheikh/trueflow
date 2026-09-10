@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /Users/sheikh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/core-graphics-0.25.0/src; grep -n 'ANSI_V\\\\|pub const COMMAND\\\\|impl KeyCode\\\\|pub struct KeyCode\\\\|fn set_type\\\\|fn set_flags\\\\|fn post\\\\b\\\\|fn post\\\\|fn new_keyboard_event\\\\|CGEventFlagCommand\\\\|enum CGEventSourceStateID\\\\|HIDSystemState\\\\|CombinedSessionState\\\\|Private' event.rs event_source.rs | head -60)",
+      "Read(//Users/sheikh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/core-graphics-0.25.0/src/**)",
+      "Bash(cargo test *)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm rust:fmt)"
+    ]
+  }
+}

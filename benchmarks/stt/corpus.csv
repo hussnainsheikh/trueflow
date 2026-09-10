@@ -1,0 +1,51 @@
+sample_id,category,expected_text,recording_variant,status
+short-01,short,"Hello, this is a test of TrueFlow.",normal,pending
+short-02,short,"Send the letter tomorrow morning.",normal,pending
+short-03,short,"Chapter twelve begins at sunrise.",normal,pending
+short-04,short,"Keep the second scene.",normal,pending
+short-05,short,"Move the reveal later.",normal,pending
+long-01,long,"The rain had stopped before Elara reached the eastern gate, but the stones still shone beneath the lamps and every footstep carried across the empty courtyard.",normal,pending
+long-02,long,"I want this chapter to begin quietly, with the character noticing small details before the argument interrupts the calm and changes the direction of the scene.",normal,pending
+long-03,long,"The first paragraph should establish the setting, the second should introduce the immediate problem, and the final paragraph should end with a question the reader wants answered.",normal,pending
+long-04,long,"We crossed the valley after midnight and followed the river north until the old watchtower appeared through the fog beyond the black pines.",normal,pending
+long-05,long,"This is a longer conversational dictation sample designed to reveal whether partial results continue without growing lag while the speaker maintains a natural and steady pace.",normal,pending
+fast-01,fast,"We need to revise the opening, shorten the middle, and make the ending land with more force.",fast,pending
+fast-02,fast,"Take the notes from yesterday, group them by character, and flag anything that contradicts the outline.",fast,pending
+fast-03,fast,"He opened the door, checked the hallway, grabbed the satchel, and ran before the guards turned the corner.",fast,pending
+quiet-01,quiet,"The room was silent except for the clock.",quiet,pending
+quiet-02,quiet,"She whispered that no one must know.",quiet,pending
+quiet-03,quiet,"Leave the lantern beside the window.",quiet,pending
+filler-01,filler,"Okay so I think we should um probably move the second scene.",normal,pending
+filler-02,filler,"Well I mean the chapter could maybe start with the storm.",normal,pending
+filler-03,filler,"So basically he goes back because uh he forgot the map.",normal,pending
+correction-01,self-correction,"Move the second scene, actually no, keep the second scene but move the reveal later.",normal,pending
+correction-02,self-correction,"She arrives on Tuesday, sorry, Wednesday afternoon.",normal,pending
+correction-03,self-correction,"The door is blue, no, make that green.",normal,pending
+correction-04,self-correction,"Call him Rowan, wait, use Ronan instead.",normal,pending
+punctuation-01,punctuation,"Did he really say that? I don't believe him.",normal,pending
+punctuation-02,punctuation,"First, gather the notes; second, revise the outline; finally, write the scene.",normal,pending
+punctuation-03,punctuation,"She said, quote, we leave at dawn, end quote.",normal,pending
+punctuation-04,punctuation,"The answer was simple: wait.",normal,pending
+conversation-01,conversational,"I think the scene works, but the transition into the next chapter still feels too abrupt.",normal,pending
+conversation-02,conversational,"Can you remind me why the captain refuses to enter the city after dark?",normal,pending
+conversation-03,conversational,"Let's leave this paragraph for now and come back after we understand the character's motive.",normal,pending
+conversation-04,conversational,"I'm not sure this is the right ending, although I like the final image.",normal,pending
+name-01,name,"Aeryndor crossed the Ashen Coast before sunrise.",normal,pending
+name-02,name,"Kael told Elara that Vhal'Tor would fall before winter.",normal,pending
+name-03,name,"Seraphine waited beside the River Orison.",normal,pending
+name-04,name,"Commander Thalen returned to Myrath Keep.",normal,pending
+name-05,name,"Ilyra carried the Vaelorian seal.",normal,pending
+technical-01,unusual-vocabulary,"The WebSocket handshake timed out before the first audio packet.",normal,pending
+technical-02,unusual-vocabulary,"Use sixteen-bit PCM at forty-eight kilohertz.",normal,pending
+technical-03,unusual-vocabulary,"The bounded queue rejected the chunk instead of growing indefinitely.",normal,pending
+technical-04,unusual-vocabulary,"Record the ninety-fifth percentile finalization latency.",normal,pending
+false-start-01,false-start,"The captain walked, the captain ran across the courtyard.",normal,pending
+false-start-02,false-start,"We should remove, we should revise the first paragraph.",normal,pending
+false-start-03,false-start,"Her brother knew, her sister knew where the key was hidden.",normal,pending
+mic-01,microphone-quality,"The old bridge trembled under the wagon.",built-in-mic,pending
+mic-02,microphone-quality,"The old bridge trembled under the wagon.",external-mic,pending
+mic-03,microphone-quality,"The market opened before the bells rang.",built-in-mic,pending
+mic-04,microphone-quality,"The market opened before the bells rang.",external-mic,pending
+very-short-01,very-short,"Wait.",normal,pending
+very-short-02,very-short,"Not yet.",normal,pending
+very-short-03,very-short,"Chapter one.",normal,pending
