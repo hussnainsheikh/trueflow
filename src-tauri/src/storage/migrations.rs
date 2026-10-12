@@ -30,6 +30,11 @@ const MIGRATIONS: &[Migration] = &[
         name: "productization",
         sql: include_str!("../../migrations/0004_productization.sql"),
     },
+    Migration {
+        version: 5,
+        name: "microphone_selection",
+        sql: include_str!("../../migrations/0005_microphone_selection.sql"),
+    },
 ];
 
 pub fn run(connection: &mut Connection) -> Result<(), AppError> {
@@ -105,7 +110,7 @@ mod tests {
 
         run(&mut connection).expect("latest migration");
 
-        assert_eq!(current_version(&connection).expect("version"), 4);
+        assert_eq!(current_version(&connection).expect("version"), 5);
         assert_eq!(
             connection
                 .query_row(
@@ -132,7 +137,7 @@ mod tests {
         run(&mut connection).expect("version three");
         run(&mut connection).expect("idempotent restart");
 
-        assert_eq!(current_version(&connection).expect("version"), 4);
+        assert_eq!(current_version(&connection).expect("version"), 5);
         assert_eq!(
             connection
                 .query_row(
@@ -171,7 +176,7 @@ mod tests {
 
         run(&mut connection).expect("productization migration");
 
-        assert_eq!(current_version(&connection).expect("version"), 4);
+        assert_eq!(current_version(&connection).expect("version"), 5);
         assert_eq!(
             connection
                 .query_row(
@@ -188,6 +193,52 @@ mod tests {
                     .get::<_, u32>(0))
                 .expect("settings"),
             1
+        );
+    }
+
+    #[test]
+    fn upgrades_version_four_to_microphone_selection_preserving_settings() {
+        let mut connection = Connection::open_in_memory().expect("database");
+        run_list(&mut connection, &MIGRATIONS[..4]).expect("version four");
+        connection
+            .execute(
+                "UPDATE product_settings SET show_overlay=0, dictation_shortcut='Control+Space' WHERE singleton=1",
+                [],
+            )
+            .expect("existing settings");
+
+        run(&mut connection).expect("microphone selection migration");
+
+        assert_eq!(current_version(&connection).expect("version"), 5);
+        let (show_overlay, shortcut, device_id, device_name) = connection
+            .query_row(
+                "SELECT show_overlay, dictation_shortcut, microphone_device_id, microphone_device_name FROM product_settings WHERE singleton=1",
+                [],
+                |row| {
+                    Ok((
+                        row.get::<_, bool>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                        row.get::<_, Option<String>>(3)?,
+                    ))
+                },
+            )
+            .expect("settings");
+        assert!(!show_overlay);
+        assert_eq!(shortcut, "Control+Space");
+        assert_eq!(
+            device_id, None,
+            "existing installs keep following the system default"
+        );
+        assert_eq!(device_name, None);
+        assert!(
+            connection
+                .execute(
+                    "UPDATE product_settings SET microphone_device_id='' WHERE singleton=1",
+                    [],
+                )
+                .is_err(),
+            "empty device identifiers are rejected by the schema"
         );
     }
 

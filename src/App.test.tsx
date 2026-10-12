@@ -46,6 +46,8 @@ const readyProductSettings = {
   dictationShortcut: "Option+Space",
   rewriteShortcut: "Option+Shift+Space",
   dictationPaused: false,
+  microphoneDeviceId: null,
+  microphoneDeviceName: null,
 };
 
 describe("MainWindow", () => {

@@ -601,18 +601,20 @@ keeps focus, and the overlay does not display the selected source.
 
 ## Milestone 7 automated checks
 
-| Area              | Scenario                                                                                                                | Result             |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| Migration         | Fresh schema and v3 → v4 upgrade; existing writing data retained                                                        | AUTOMATED VERIFIED |
-| Onboarding        | Fresh/partial persistence, non-destructive re-entry, real completed-operation gate, duplicate observation               | AUTOMATED VERIFIED |
-| Settings          | Rust persistence/restart, backend allowlist, registration-failure rollback, async frontend guards                       | AUTOMATED VERIFIED |
-| History           | Create/list, 50-row pages, 280-character previews, 1,000-row retention, copy/delete/clear/restart/Unicode/large content | AUTOMATED VERIFIED |
-| Isolation         | History write failure cannot change completion; clear/sign-out preserve all other local tables/data                     | AUTOMATED VERIFIED |
-| Authentication    | Signed-out, pending, success, memory credentials, restoration, expiry, invalid response, sign-out, network retry        | AUTOMATED VERIFIED |
-| Analytics         | Opt-out, safe event metadata, duplicate completion suppression, delivery failure isolation                              | AUTOMATED VERIFIED |
-| Diagnostics/crash | Safe-token allowlist and representative secret/content exclusion                                                        | AUTOMATED VERIFIED |
-| Frontend          | Onboarding persistence/microphone recovery, History actions, settings, account readiness, UI regression                 | AUTOMATED VERIFIED |
-| Security          | Core-only Tauri capability remains unchanged; no frontend shell/filesystem/network/clipboard permission                 | AUTOMATED VERIFIED |
+| Area              | Scenario                                                                                                                  | Result             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Migration         | Fresh schema and v3 → v4 upgrade; existing writing data retained                                                          | AUTOMATED VERIFIED |
+| Migration         | v4 → v5 microphone columns; existing settings retained, default stays `NULL`, empty IDs rejected                          | AUTOMATED VERIFIED |
+| Microphone        | Default/selected/disconnected resolution, stable sort, restart persistence, invalid-ID rejection, picker + payload checks | AUTOMATED VERIFIED |
+| Onboarding        | Fresh/partial persistence, non-destructive re-entry, real completed-operation gate, duplicate observation                 | AUTOMATED VERIFIED |
+| Settings          | Rust persistence/restart, backend allowlist, registration-failure rollback, async frontend guards                         | AUTOMATED VERIFIED |
+| History           | Create/list, 50-row pages, 280-character previews, 1,000-row retention, copy/delete/clear/restart/Unicode/large content   | AUTOMATED VERIFIED |
+| Isolation         | History write failure cannot change completion; clear/sign-out preserve all other local tables/data                       | AUTOMATED VERIFIED |
+| Authentication    | Signed-out, pending, success, memory credentials, restoration, expiry, invalid response, sign-out, network retry          | AUTOMATED VERIFIED |
+| Analytics         | Opt-out, safe event metadata, duplicate completion suppression, delivery failure isolation                                | AUTOMATED VERIFIED |
+| Diagnostics/crash | Safe-token allowlist and representative secret/content exclusion                                                          | AUTOMATED VERIFIED |
+| Frontend          | Onboarding persistence/microphone recovery, History actions, settings, account readiness, UI regression                   | AUTOMATED VERIFIED |
+| Security          | Core-only Tauri capability remains unchanged; no frontend shell/filesystem/network/clipboard permission                   | AUTOMATED VERIFIED |
 
 Automated tests use SQLite temporary databases, auth/session/analytics test
 doubles, and the existing native/provider mocks. They do not contact a live
@@ -649,6 +651,13 @@ configuration, network condition, target application/version, and tester/date.
 | Working shortcut change + restart           | New pair registers, displays, and operates                               | PENDING HUMAN VALIDATION |
 | Conflicting shortcut                        | Actionable error; prior pair remains registered/persisted                | PENDING HUMAN VALIDATION |
 | Permission recovery from Settings           | Status/actions/recheck are accurate                                      | PENDING HUMAN VALIDATION |
+| Microphone list                             | Built-in, USB, and Bluetooth inputs listed; default labelled             | PENDING HUMAN VALIDATION |
+| Select non-default microphone + restart     | Next dictation records from the chosen device; choice persists           | PENDING HUMAN VALIDATION |
+| Unplug selected microphone, then dictate    | Speech captured from system default; Settings shows disconnected         | PENDING HUMAN VALIDATION |
+| Replug selected microphone                  | Next dictation uses it again without re-selecting                        | PENDING HUMAN VALIDATION |
+| Back to System default                      | Follows macOS input changes made in System Settings                      | PENDING HUMAN VALIDATION |
+| Change microphone during a recording        | Active recording unaffected; new device applies next time                | PENDING HUMAN VALIDATION |
+| Selected-device start latency               | Shortcut → first audio within prior default-device range                 | PENDING HUMAN VALIDATION |
 | Close main window                           | Window hides; tray and both shortcuts continue                           | PENDING HUMAN VALIDATION |
 | Tray Open/Settings/History                  | Correct surface opens and user-facing window activates                   | PENDING HUMAN VALIDATION |
 | Tray status/context/shortcuts               | Values refresh when opened and reflect current pipeline/context/settings | PENDING HUMAN VALIDATION |

@@ -14,6 +14,7 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::{
+    audio::valid_device_field,
     config::AppConfig,
     credentials::ProviderCredentials,
     dictation::{DictationSnapshot, DictationState},
@@ -159,6 +160,8 @@ pub struct ProductSettings {
     pub dictation_shortcut: String,
     pub rewrite_shortcut: String,
     pub dictation_paused: bool,
+    pub microphone_device_id: Option<String>,
+    pub microphone_device_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -538,6 +541,32 @@ impl ProductService {
             .connection()
             .map_err(|_| ProductError::DatabaseLock)?;
         connection.execute("UPDATE product_settings SET history_enabled=?1, analytics_enabled=?2, show_overlay=?3, updated_at=CURRENT_TIMESTAMP WHERE singleton=1", params![update.history_enabled, update.analytics_enabled, update.show_overlay])?;
+        drop(connection);
+        let settings = load_settings(&self.database)?;
+        *self
+            .settings_cache
+            .lock()
+            .map_err(|_| ProductError::DatabaseLock)? = settings.clone();
+        Ok(settings)
+    }
+
+    /// Persists the preferred input device. `None` follows the system default.
+    /// Callers must confirm the device is currently connected before saving it.
+    pub fn set_microphone(
+        &self,
+        device: Option<(&str, &str)>,
+    ) -> Result<ProductSettings, ProductError> {
+        if let Some((id, name)) = device
+            && !(valid_device_field(id) && valid_device_field(name))
+        {
+            return Err(ProductError::InvalidSetting("microphone"));
+        }
+        let (id, name) = device.unzip();
+        let connection = self
+            .database
+            .connection()
+            .map_err(|_| ProductError::DatabaseLock)?;
+        connection.execute("UPDATE product_settings SET microphone_device_id=?1, microphone_device_name=?2, updated_at=CURRENT_TIMESTAMP WHERE singleton=1", params![id, name])?;
         drop(connection);
         let settings = load_settings(&self.database)?;
         *self
@@ -1128,9 +1157,9 @@ fn load_settings(database: &Database) -> Result<ProductSettings, ProductError> {
     let connection = database
         .connection()
         .map_err(|_| ProductError::DatabaseLock)?;
-    connection.query_row("SELECT onboarding_state, onboarding_step, history_enabled, analytics_enabled, show_overlay, dictation_shortcut, rewrite_shortcut, dictation_paused FROM product_settings WHERE singleton=1", [], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, bool>(2)?, row.get::<_, bool>(3)?, row.get::<_, bool>(4)?, row.get(5)?, row.get(6)?, row.get::<_, bool>(7)?))
-    }).map_err(ProductError::from).and_then(|row| Ok(ProductSettings { onboarding_state: OnboardingState::parse(&row.0)?, onboarding_step: OnboardingStep::parse(&row.1)?, history_enabled: row.2, analytics_enabled: row.3, show_overlay: row.4, dictation_shortcut: row.5, rewrite_shortcut: row.6, dictation_paused: row.7 }))
+    connection.query_row("SELECT onboarding_state, onboarding_step, history_enabled, analytics_enabled, show_overlay, dictation_shortcut, rewrite_shortcut, dictation_paused, microphone_device_id, microphone_device_name FROM product_settings WHERE singleton=1", [], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, bool>(2)?, row.get::<_, bool>(3)?, row.get::<_, bool>(4)?, row.get(5)?, row.get(6)?, row.get::<_, bool>(7)?, row.get(8)?, row.get(9)?))
+    }).map_err(ProductError::from).and_then(|row| Ok(ProductSettings { onboarding_state: OnboardingState::parse(&row.0)?, onboarding_step: OnboardingStep::parse(&row.1)?, history_enabled: row.2, analytics_enabled: row.3, show_overlay: row.4, dictation_shortcut: row.5, rewrite_shortcut: row.6, dictation_paused: row.7, microphone_device_id: row.8, microphone_device_name: row.9 }))
 }
 
 pub fn install_crash_reporting(config: &AppConfig) {
@@ -1437,6 +1466,77 @@ mod tests {
         )
         .expect("restarted product service");
         assert!(!restarted.settings().expect("settings").history_enabled);
+    }
+
+    #[test]
+    fn microphone_preference_persists_across_restart_and_clears_to_default() {
+        let directory = tempdir().expect("temporary directory");
+        let path = directory.path().join("microphone.sqlite3");
+        let open = || {
+            ProductService::new(
+                Arc::new(Database::open(&path).expect("database")),
+                AppConfig::for_tests(),
+            )
+            .expect("product service")
+        };
+        let service = open();
+        assert_eq!(
+            service.settings().expect("settings").microphone_device_id,
+            None
+        );
+        let saved = service
+            .set_microphone(Some(("coreaudio:USB-Mic-UID", "Studio USB Mic")))
+            .expect("select microphone");
+        assert_eq!(
+            saved.microphone_device_id.as_deref(),
+            Some("coreaudio:USB-Mic-UID")
+        );
+        assert_eq!(
+            saved.microphone_device_name.as_deref(),
+            Some("Studio USB Mic")
+        );
+        drop(service);
+
+        let restarted = open();
+        let settings = restarted.settings().expect("settings");
+        assert_eq!(
+            settings.microphone_device_id.as_deref(),
+            Some("coreaudio:USB-Mic-UID")
+        );
+        assert_eq!(
+            settings.microphone_device_name.as_deref(),
+            Some("Studio USB Mic")
+        );
+
+        let cleared = restarted.set_microphone(None).expect("system default");
+        assert_eq!(cleared.microphone_device_id, None);
+        assert_eq!(cleared.microphone_device_name, None);
+    }
+
+    #[test]
+    fn invalid_microphone_preference_is_rejected_without_changing_settings() {
+        let service = service();
+        service
+            .set_microphone(Some(("coreaudio:built-in", "MacBook Microphone")))
+            .expect("valid microphone");
+        for (id, name) in [
+            ("", "Name"),
+            ("coreaudio:x", " "),
+            ("coreaudio:\nx", "Name"),
+        ] {
+            assert!(matches!(
+                service.set_microphone(Some((id, name))),
+                Err(ProductError::InvalidSetting("microphone"))
+            ));
+        }
+        assert_eq!(
+            service
+                .settings()
+                .expect("settings")
+                .microphone_device_id
+                .as_deref(),
+            Some("coreaudio:built-in")
+        );
     }
 
     #[test]

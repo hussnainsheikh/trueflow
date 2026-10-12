@@ -208,8 +208,11 @@ shortcut reminders.
 Settings are stored in Rust-owned SQLite, including onboarding progress,
 History/analytics preferences, overlay visibility, shortcut choices, and pause
 state. Shortcut changes are registered with macOS before persistence; conflicts
-roll back to the last working pair. Microphone capture currently follows the
-macOS system-default input device, as it did in Milestones 1–6. Denied microphone
+roll back to the last working pair. Settings → Shortcuts & audio offers a
+microphone picker. The default "System default" follows macOS. A pinned device
+is remembered by its stable CoreAudio identifier and applies from the next
+dictation; if it is disconnected, dictation records from the system default and
+Settings says so. Denied microphone
 and Accessibility states provide direct System Settings actions and explicit
 rechecks.
 

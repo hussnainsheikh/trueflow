@@ -1,11 +1,13 @@
 mod buffer;
 mod cpal_input;
+mod selection;
 
 use std::sync::Arc;
 
 use serde::Serialize;
 
-pub use cpal_input::CpalAudioInput;
+pub use cpal_input::{CpalAudioInput, list_input_devices};
+pub use selection::{InputDeviceInfo, MicrophoneOptions, MicrophoneSelection, valid_device_field};
 
 use crate::dictation::DictationError;
 

@@ -11,6 +11,20 @@ analytics/crash endpoints, and real-app regression matrix require human testing.
 
 ## Completed items
 
+### Milestone 7 gap closure (2026-10-12)
+
+- Added microphone selection (MVP plan §11/§29). Migration 5 adds a nullable
+  device preference; `NULL` keeps following the macOS system default. Rust
+  enumerates inputs on a blocking worker, saves only devices that are currently
+  connected, and reads the preference from memory at each recording start. A
+  disconnected pinned device falls back to the system default, so speech is
+  still captured, and Settings shows it as disconnected. See ADR-026.
+- Renamed `docs/mvp_plan.md` to `docs/MVP_PLAN.md` to match every reference in
+  `AGENTS.md`, `README.md`, and this file. Case-sensitive checkouts such as Linux
+  CI previously could not resolve those links.
+
+### Milestone 7 initial implementation
+
 - Added durable first-run onboarding with explicit Welcome, Microphone,
   Accessibility, account/credential readiness, Shortcuts, first real Dictation, and Behavior
   steps. The first-dictation gate advances only after a genuine completed normal
@@ -54,7 +68,17 @@ analytics/crash endpoints, and real-app regression matrix require human testing.
 
 ## Validation results
 
-Validated automatically on 2026-08-30:
+Re-validated automatically on 2026-10-12 after the gap closure:
+
+- `cargo fmt … --check`, `cargo clippy … -D warnings`: VERIFIED
+- `cargo test --all-features`: VERIFIED — 163 Rust unit tests and 2 streaming
+  integration tests
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`: VERIFIED
+- `pnpm test`: VERIFIED — 5 files and 26 frontend tests
+- `pnpm build`: VERIFIED
+- `pnpm tauri build`: VERIFIED — `Trueflow.app` bundle produced
+
+Previously validated automatically on 2026-08-30:
 
 - `cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check`: VERIFIED
 - `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings`: VERIFIED
@@ -96,8 +120,11 @@ provider credentials work.
 - Repeat the physical macOS insertion, selection-rewrite, focus, clipboard,
   Spaces/full-screen, provider-failure, cancellation, and latency regression
   matrices from prior milestones.
-- Microphone input continues to use the macOS system default; Milestone 7 exposes
-  permission/recovery state but does not add device selection.
+- Microphone selection is implemented but not physically validated. Run the
+  microphone rows of the Milestone 7 Settings matrix in `docs/TEST_MATRIX.md`
+  (USB/Bluetooth listing, unplug fallback, replug, restart, start latency).
+- The Settings "input level test" from MVP plan §29 remains the live overlay
+  meter during a real dictation; there is no standalone level test.
 - Billing, entitlements, usage accounting, updater behavior, signing,
   notarization, and release automation are intentionally not implemented.
 

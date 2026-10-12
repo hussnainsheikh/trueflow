@@ -3,6 +3,8 @@ use tauri::{AppHandle, State};
 
 use super::CommandError;
 use crate::{
+    audio::{InputDeviceInfo, MicrophoneOptions, list_input_devices},
+    dictation::DictationError,
     hotkey,
     insertion::InsertionBackend,
     platform::macos_insertion::{MacOsInsertionBackend, open_external_https_url},
@@ -24,6 +26,55 @@ pub fn update_product_settings(
     state: State<'_, AppState>,
 ) -> Result<ProductSettings, CommandError> {
     state.product.update_settings(update).map_err(Into::into)
+}
+
+async fn current_input_devices() -> Result<Vec<InputDeviceInfo>, CommandError> {
+    tauri::async_runtime::spawn_blocking(list_input_devices)
+        .await
+        .map_err(|_| CommandError::from(DictationError::NoInputDevice))?
+        .map_err(Into::into)
+}
+
+#[tauri::command]
+pub async fn list_microphones(
+    state: State<'_, AppState>,
+) -> Result<MicrophoneOptions, CommandError> {
+    let devices = current_input_devices().await?;
+    let settings = state.product.settings()?;
+    Ok(MicrophoneOptions::new(
+        devices,
+        settings.microphone_device_id,
+        settings.microphone_device_name,
+    ))
+}
+
+/// Selects an input device by its stable identifier, or the system default
+/// when `device_id` is absent. Only currently connected devices can be chosen;
+/// the new preference applies from the next recording.
+#[tauri::command]
+pub async fn select_microphone(
+    device_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<MicrophoneOptions, CommandError> {
+    let devices = current_input_devices().await?;
+    let chosen = match device_id.as_deref() {
+        None => None,
+        Some(id) => Some(
+            devices
+                .iter()
+                .find(|device| device.id == id)
+                .ok_or(crate::product::ProductError::InvalidSetting("microphone"))?,
+        ),
+    };
+    let settings = state
+        .product
+        .set_microphone(chosen.map(|device| (device.id.as_str(), device.name.as_str())))?;
+    state.microphone.set(settings.microphone_device_id.clone());
+    Ok(MicrophoneOptions::new(
+        devices,
+        settings.microphone_device_id,
+        settings.microphone_device_name,
+    ))
 }
 
 #[tauri::command]
