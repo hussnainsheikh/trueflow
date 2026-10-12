@@ -627,3 +627,28 @@ operation result. List DTOs carry no more than 280 Unicode characters of result
 preview; the complete result is loaded only by the narrow copy command. This
 keeps React payloads bounded and gives local retention an explicit, predictable
 policy.
+
+## ADR-026: Microphone preference by stable device ID with default fallback
+
+- **Status:** Accepted
+- **Date:** 2026-10-12
+
+Settings may pin an input device (MVP plan §11 and §29). The preference is the
+CPAL 0.18 `DeviceId` string, which on macOS wraps the CoreAudio device UID and
+survives reconnects and renames. It is stored in nullable
+`product_settings.microphone_device_id` with the last known display name, so
+Settings can label a disconnected device. `NULL` means "follow the system
+default", and existing installs migrate to that unchanged.
+
+The Rust capture path reads the preference from a shared in-memory
+`MicrophoneSelection` once per recording start, with no database read. If no
+device is pinned, capture behaves exactly as in Milestones 1–7. If the pinned
+device is disconnected, capture falls back to the system default and logs a
+content-free warning instead of failing, because losing the user's speech to a
+missing USB microphone is worse than recording on a different input. Settings
+shows the disconnected state explicitly.
+
+Selection is validated in Rust: only a currently enumerated device can be saved,
+so React cannot persist an arbitrary identifier. Enumeration runs on a blocking
+worker, never on the UI thread. A selection change applies from the next
+recording; an active recording keeps its device.

@@ -18,6 +18,21 @@ export type ProductSettings = {
   dictationShortcut: string;
   rewriteShortcut: string;
   dictationPaused: boolean;
+  microphoneDeviceId: string | null;
+  microphoneDeviceName: string | null;
+};
+
+export type InputDevice = {
+  id: string;
+  name: string;
+  isDefault: boolean;
+};
+
+export type MicrophoneOptions = {
+  devices: InputDevice[];
+  selectedId: string | null;
+  selectedName: string | null;
+  selectedAvailable: boolean;
 };
 
 export type HistoryItem = {
@@ -90,7 +105,9 @@ export function parseProductSettings(value: unknown): ProductSettings {
     typeof value.showOverlay !== "boolean" ||
     typeof value.dictationShortcut !== "string" ||
     typeof value.rewriteShortcut !== "string" ||
-    typeof value.dictationPaused !== "boolean"
+    typeof value.dictationPaused !== "boolean" ||
+    !nullableString(value.microphoneDeviceId) ||
+    !nullableString(value.microphoneDeviceName)
   )
     throw new Error("Invalid product settings payload");
   return value as ProductSettings;
@@ -155,6 +172,28 @@ export function parseAuthStart(value: unknown): AuthStart {
   )
     throw new Error("Invalid authentication payload");
   return value as AuthStart;
+}
+
+export function parseMicrophoneOptions(value: unknown): MicrophoneOptions {
+  if (
+    !record(value) ||
+    !Array.isArray(value.devices) ||
+    !value.devices.every(isInputDevice) ||
+    !nullableString(value.selectedId) ||
+    !nullableString(value.selectedName) ||
+    typeof value.selectedAvailable !== "boolean"
+  )
+    throw new Error("Invalid microphone payload");
+  return value as MicrophoneOptions;
+}
+
+function isInputDevice(value: unknown): value is InputDevice {
+  return (
+    record(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.isDefault === "boolean"
+  );
 }
 
 function isHistoryItem(value: unknown): value is HistoryItem {

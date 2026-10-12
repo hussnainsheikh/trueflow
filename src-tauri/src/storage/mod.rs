@@ -60,7 +60,7 @@ mod tests {
         let database = Database::open(&database_path).expect("database should initialize");
 
         assert!(database_path.exists());
-        assert_eq!(database.schema_version().expect("version should load"), 4);
+        assert_eq!(database.schema_version().expect("version should load"), 5);
     }
 
     #[test]
@@ -72,7 +72,7 @@ mod tests {
         let database =
             Database::open(&database_path).expect("second initialization should succeed");
 
-        assert_eq!(database.schema_version().expect("version should load"), 4);
+        assert_eq!(database.schema_version().expect("version should load"), 5);
 
         let connection = rusqlite::Connection::open(&database_path).expect("inspect database");
         assert_eq!(

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AccountScreen,
   HistoryScreen,
+  MicrophoneSettings,
   Onboarding,
   SettingsScreen,
 } from "./ProductShell";
@@ -22,6 +23,8 @@ const settings: ProductSettings = {
   dictationShortcut: "Option+Space",
   rewriteShortcut: "Option+Shift+Space",
   dictationPaused: false,
+  microphoneDeviceId: null,
+  microphoneDeviceName: null,
 };
 const snapshot = {
   state: "idle",
@@ -205,5 +208,91 @@ describe("Milestone 7 product surfaces", () => {
     expect(
       screen.getByRole("button", { name: "Sign in or create account" }),
     ).toBeEnabled();
+  });
+
+  describe("microphone selection", () => {
+    const devices = [
+      { id: "coreaudio:built-in", name: "MacBook Microphone", isDefault: true },
+      { id: "coreaudio:usb", name: "Studio USB Mic", isDefault: false },
+    ];
+
+    it("lists devices and persists a selection through Rust", async () => {
+      invokeMock.mockImplementation((command, args) => {
+        if (command === "list_microphones")
+          return Promise.resolve({
+            devices,
+            selectedId: null,
+            selectedName: null,
+            selectedAvailable: true,
+          });
+        if (command === "select_microphone")
+          return Promise.resolve({
+            devices,
+            selectedId: (args as { deviceId: string }).deviceId,
+            selectedName: "Studio USB Mic",
+            selectedAvailable: true,
+          });
+        // The suite-level beforeEach returns the mock, which Vitest then
+        // invokes as a cleanup hook with no command.
+        return Promise.resolve(undefined);
+      });
+      render(<MicrophoneSettings />);
+      const picker = await screen.findByLabelText("Microphone");
+      await waitFor(() => expect(picker).toBeEnabled());
+      expect(
+        screen.getByRole("option", {
+          name: "System default (MacBook Microphone)",
+        }),
+      ).toBeInTheDocument();
+      fireEvent.change(picker, { target: { value: "coreaudio:usb" } });
+      await waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith("select_microphone", {
+          deviceId: "coreaudio:usb",
+        }),
+      );
+      await waitFor(() => expect(picker).toHaveValue("coreaudio:usb"));
+    });
+
+    it("returns to the system default with a null device", async () => {
+      invokeMock.mockResolvedValue({
+        devices,
+        selectedId: "coreaudio:usb",
+        selectedName: "Studio USB Mic",
+        selectedAvailable: true,
+      });
+      render(<MicrophoneSettings />);
+      const picker = await screen.findByLabelText("Microphone");
+      await waitFor(() => expect(picker).toHaveValue("coreaudio:usb"));
+      fireEvent.change(picker, { target: { value: "" } });
+      await waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith("select_microphone", {
+          deviceId: null,
+        }),
+      );
+    });
+
+    it("explains the fallback when the saved microphone is disconnected", async () => {
+      invokeMock.mockResolvedValue({
+        devices: devices.slice(0, 1),
+        selectedId: "coreaudio:usb",
+        selectedName: "Studio USB Mic",
+        selectedAvailable: false,
+      });
+      render(<MicrophoneSettings />);
+      expect(
+        await screen.findByText(/Studio USB Mic is disconnected/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Studio USB Mic (disconnected)" }),
+      ).toBeDisabled();
+    });
+
+    it("surfaces enumeration errors and rejects malformed payloads", async () => {
+      invokeMock.mockResolvedValue({ devices: "nope" });
+      render(<MicrophoneSettings />);
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Invalid microphone payload",
+      );
+    });
   });
 });

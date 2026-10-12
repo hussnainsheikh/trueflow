@@ -25,7 +25,7 @@ use tauri::Manager;
 use tracing::info;
 
 use crate::{
-    audio::CpalAudioInput,
+    audio::{CpalAudioInput, MicrophoneSelection},
     config::AppConfig,
     dictation::{DictationProviders, DictationService, TauriUiSink},
     insertion::InsertionCoordinator,
@@ -57,6 +57,7 @@ pub fn run() {
             let projects = ProjectService::new(database.clone())?;
             let product = ProductService::new(database.clone(), config.clone())?;
             install_crash_reporting(&config);
+            let microphone = MicrophoneSelection::new(product.settings()?.microphone_device_id);
 
             info!(
                 subsystem = "application",
@@ -84,7 +85,7 @@ pub fn run() {
             ));
             let dictation = DictationService::new(
                 Box::new(MacOsMicrophonePermission),
-                Box::new(CpalAudioInput),
+                Box::new(CpalAudioInput::new(microphone.clone())),
                 projects.clone(),
                 DictationProviders {
                     transcription: provider,
@@ -102,6 +103,7 @@ pub fn run() {
                 projects,
                 dictation.clone(),
                 product.clone(),
+                microphone,
             ));
 
             app.state::<AppState>().product.record_app_launched();
@@ -154,6 +156,8 @@ pub fn run() {
             commands::writing::set_project_mode,
             commands::product::product_settings,
             commands::product::update_product_settings,
+            commands::product::list_microphones,
+            commands::product::select_microphone,
             commands::product::update_shortcuts,
             commands::product::update_onboarding,
             commands::product::list_history,

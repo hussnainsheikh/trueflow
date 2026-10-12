@@ -8,20 +8,33 @@ use std::{
 };
 
 use cpal::{
-    Device, FromSample, Sample, SampleFormat, SizedSample, Stream, StreamConfig,
+    Device, DeviceId, FromSample, Sample, SampleFormat, SizedSample, Stream, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
 };
+
+use tracing::warn;
 
 use super::{
     AudioFormat, AudioInput, CaptureEventHandler, CaptureSummary, RecordingSession,
     buffer::BoundedAudioBuffer,
+    selection::{DeviceChoice, InputDeviceInfo, MicrophoneSelection, resolve_device, sort_devices},
 };
 use crate::dictation::DictationError;
 
 const BUFFER_SECONDS: usize = 30;
 const LEVEL_INTERVAL: Duration = Duration::from_millis(33);
 
-pub struct CpalAudioInput;
+const UNKNOWN_DEVICE_NAME: &str = "Unknown microphone";
+
+pub struct CpalAudioInput {
+    selection: MicrophoneSelection,
+}
+
+impl CpalAudioInput {
+    pub const fn new(selection: MicrophoneSelection) -> Self {
+        Self { selection }
+    }
+}
 
 impl AudioInput for CpalAudioInput {
     fn start(
@@ -29,9 +42,24 @@ impl AudioInput for CpalAudioInput {
         handler: Arc<dyn CaptureEventHandler>,
     ) -> Result<Box<dyn RecordingSession>, DictationError> {
         let host = cpal::default_host();
-        let device = host
-            .default_input_device()
-            .ok_or(DictationError::NoInputDevice)?;
+        let selected_id = self.selection.current();
+        let (device, choice) = resolve_device(
+            selected_id.as_deref(),
+            |id| {
+                id.parse::<DeviceId>()
+                    .ok()
+                    .and_then(|id| host.device_by_id(&id))
+            },
+            || host.default_input_device(),
+        )
+        .ok_or(DictationError::NoInputDevice)?;
+        if choice == DeviceChoice::SelectedUnavailable {
+            warn!(
+                subsystem = "audio",
+                event = "selected_microphone_unavailable",
+                "selected microphone is disconnected; capturing from the system default"
+            );
+        }
         let supported = device
             .default_input_config()
             .map_err(|error| DictationError::UnsupportedAudioConfiguration(error.to_string()))?;
@@ -92,6 +120,35 @@ impl AudioInput for CpalAudioInput {
             channels,
         }))
     }
+}
+
+/// Enumerates current input devices for Settings. This performs CoreAudio
+/// queries and must not run on the UI thread or inside the capture path.
+pub fn list_input_devices() -> Result<Vec<InputDeviceInfo>, DictationError> {
+    let host = cpal::default_host();
+    let default_id = host
+        .default_input_device()
+        .and_then(|device| device.id().ok());
+    let mut devices: Vec<InputDeviceInfo> = host
+        .input_devices()
+        .map_err(|_| DictationError::NoInputDevice)?
+        .filter_map(|device| {
+            let id = device.id().ok()?;
+            let name = device
+                .description()
+                .map(|description| description.name().trim().to_owned())
+                .ok()
+                .filter(|name| !name.is_empty())
+                .unwrap_or_else(|| UNKNOWN_DEVICE_NAME.to_owned());
+            Some(InputDeviceInfo {
+                is_default: default_id.as_ref() == Some(&id),
+                id: id.to_string(),
+                name,
+            })
+        })
+        .collect();
+    sort_devices(&mut devices);
+    Ok(devices)
 }
 
 #[derive(Default)]

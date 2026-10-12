@@ -8,10 +8,12 @@ import {
   parseAuthStart,
   parseDiagnostics,
   parseHistoryPage,
+  parseMicrophoneOptions,
   parseProductSettings,
   type AccountStatus,
   type Diagnostics,
   type HistoryItem,
+  type MicrophoneOptions,
   type ProductSettings,
 } from "../types/product";
 
@@ -440,6 +442,88 @@ export function HistoryScreen() {
   );
 }
 
+const SYSTEM_DEFAULT_MICROPHONE = "";
+
+export function MicrophoneSettings() {
+  const [options, setOptions] = useState<MicrophoneOptions | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const refresh = useCallback(async () => {
+    setBusy(true);
+    try {
+      setOptions(parseMicrophoneOptions(await invoke("list_microphones")));
+      setError(null);
+    } catch (reason) {
+      setError(message(reason));
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+  const select = async (value: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      setOptions(
+        parseMicrophoneOptions(
+          await invoke("select_microphone", {
+            deviceId: value === SYSTEM_DEFAULT_MICROPHONE ? null : value,
+          }),
+        ),
+      );
+      setError(null);
+    } catch (reason) {
+      setError(message(reason));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const systemDefault = options?.devices.find((device) => device.isDefault);
+  return (
+    <>
+      <label>
+        Microphone
+        <select
+          value={options?.selectedId ?? SYSTEM_DEFAULT_MICROPHONE}
+          disabled={busy || options === null}
+          onChange={(event) => void select(event.target.value)}
+        >
+          <option value={SYSTEM_DEFAULT_MICROPHONE}>
+            System default
+            {systemDefault ? ` (${systemDefault.name})` : ""}
+          </option>
+          {options?.devices.map((device) => (
+            <option key={device.id} value={device.id}>
+              {device.name}
+            </option>
+          ))}
+          {options && !options.selectedAvailable && options.selectedId && (
+            <option value={options.selectedId} disabled>
+              {options.selectedName ?? "Saved microphone"} (disconnected)
+            </option>
+          )}
+        </select>
+      </label>
+      <button type="button" disabled={busy} onClick={() => void refresh()}>
+        Refresh microphones
+      </button>
+      {options && !options.selectedAvailable && (
+        <p role="status">
+          {options.selectedName ?? "Your saved microphone"} is disconnected.
+          Dictation uses the system default until it is reconnected.
+        </p>
+      )}
+      {error && <p role="alert">{error}</p>}
+      <p>
+        Changes apply from the next dictation. The live meter appears during a
+        real hold-to-talk test.
+      </p>
+    </>
+  );
+}
+
 export function SettingsScreen({
   settings,
   onSaved,
@@ -578,10 +662,7 @@ export function SettingsScreen({
             Registration is validated before saving; a conflict rolls back to
             the working shortcuts.
           </p>
-          <p>
-            Input: macOS system default microphone. The live meter appears
-            during a real hold-to-talk test.
-          </p>
+          <MicrophoneSettings />
         </fieldset>
         <fieldset>
           <legend>Permissions</legend>
