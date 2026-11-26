@@ -11,6 +11,17 @@ analytics/crash endpoints, and real-app regression matrix require human testing.
 
 ## Completed items
 
+### Frontend test flakiness fix (2026-11-26)
+
+- Frontend tests intermittently failed under CPU load (parallel jsdom workers
+  alongside a cargo build): `findBy*`/`waitFor` hit Testing Library's default
+  1s limit before correct async renders landed. Observed in
+  `ProductShell.test.tsx` and `ProjectVocabularyManager.test.tsx`; reproduced
+  about 1 in 3 full runs under synthetic load. `src/test/setup.ts` now sets
+  `asyncUtilTimeout` to 5s and `vite.config.ts` sets `testTimeout` to 15s.
+  Verified with 6 consecutive passing full runs under the same load. No
+  component behavior changed.
+
 ### Milestone 7 gap closure (2026-10-12)
 
 - Added microphone selection (MVP plan §11/§29). Migration 5 adds a nullable
