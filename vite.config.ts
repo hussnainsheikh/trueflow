@@ -25,5 +25,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     restoreMocks: true,
+    // Must exceed the Testing Library asyncUtilTimeout set in src/test/setup.ts.
+    testTimeout: 15000,
   },
 });
